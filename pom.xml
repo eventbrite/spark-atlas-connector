@@ -40,6 +40,7 @@
     <mockito.version>1.9.5</mockito.version>
     <integration.test.enabled>false</integration.test.enabled>
     <jersey.version>1.19</jersey.version>
+    <jettison.version>1.3.7</jettison.version>
   </properties>
 
   <modules>
@@ -48,6 +49,24 @@
   </modules>
 
   <dependencies>
+
+    <dependency>
+      <groupId>com.sun.jersey</groupId>
+      <artifactId>jersey-client</artifactId>
+      <version>${jersey.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>com.sun.jersey</groupId>
+      <artifactId>jersey-core</artifactId>
+      <version>${jersey.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>com.sun.jersey.contribs</groupId>
+      <artifactId>jersey-multipart</artifactId>
+      <version>${jersey.version}</version>
+    </dependency>
 
     <dependency>
       <groupId>com.sun.jersey</groupId>
@@ -144,7 +163,7 @@
 
     <dependency>
       <groupId>org.apache.atlas</groupId>
-      <artifactId>atlas-notification</artifactId>
+      <artifactId>atlas-client-common</artifactId>
       <version>${atlas.version}</version>
     </dependency>
 
@@ -156,8 +175,38 @@
 
     <dependency>
       <groupId>org.apache.atlas</groupId>
+      <artifactId>atlas-common</artifactId>
+      <version>${atlas.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.atlas</groupId>
+      <artifactId>atlas-intg</artifactId>
+      <version>${atlas.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.atlas</groupId>
+      <artifactId>atlas-notification</artifactId>
+      <version>${atlas.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.atlas</groupId>
+      <artifactId>atlas-typesystem</artifactId>
+      <version>${atlas.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.atlas</groupId>
       <artifactId>hbase-bridge</artifactId>
       <version>${atlas.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.codehaus.jettison</groupId>
+      <artifactId>jettison</artifactId>
+      <version>${jettison.version}</version>
     </dependency>
 
     <dependency>
