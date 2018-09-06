@@ -107,4 +107,20 @@ class KafkaAtlasClient(atlasClientConf: AtlasClientConf) extends AtlasHook with 
 
     referenceable
   }
+
+  override def getAtlasEntitiesWithUniqueAttribute(
+     entityType: String,
+     attribute: String): AtlasEntity = {
+    ???
+  }
+
+  override def deleteAtlasEntitiesWithGuidBulk(
+    guid: List[String]): Unit = {
+    ???
+  }
+
+  override def deleteAtlasEntitiesWithGuid(
+    guid: String): Unit = {
+    ???
+  }
 }

@@ -46,6 +46,13 @@ bin/spark-shell --jars spark-atlas-connector_2.11-0.1.0-SNAPSHOT.jar \
 --conf spark.sql.queryExecutionListeners=com.hortonworks.spark.atlas.SparkAtlasEventTracker
 ```
 
+Or add it to your spark-defaults.conf
+
+```
+spark.extraListeners                com.hortonworks.spark.atlas.SparkAtlasEventTracker
+spark.sql.queryExecutionListeners   com.hortonworks.spark.atlas.SparkAtlasEventTracker
+```
+
 Also make sure atlas configuration file `atlas-application.properties` is in the Driver's classpath. For example, putting this file into `<SPARK_HOME>/conf`.
 
 If you're using cluster mode, please also ship this conf file to the remote Drive using `--files atlas-application.properties`.

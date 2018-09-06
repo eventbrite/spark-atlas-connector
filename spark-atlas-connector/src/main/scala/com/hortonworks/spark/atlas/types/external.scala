@@ -22,7 +22,6 @@ import java.net.{URI, URISyntaxException}
 import java.util.Date
 
 import scala.collection.JavaConverters._
-
 import org.apache.atlas.{AtlasClient, AtlasConstants}
 import org.apache.atlas.hbase.bridge.HBaseAtlasHook._
 import org.apache.atlas.model.instance.AtlasEntity
@@ -31,10 +30,9 @@ import org.apache.hadoop.fs.Path
 import org.apache.hadoop.hive.ql.session.SessionState
 import org.apache.spark.sql.catalyst.catalog.{CatalogDatabase, CatalogStorageFormat, CatalogTable}
 import org.apache.spark.sql.types.StructType
+import com.hortonworks.spark.atlas.utils.{Logging, SparkUtils}
 
-import com.hortonworks.spark.atlas.utils.SparkUtils
-
-object external {
+object external extends Logging {
   // External metadata types used to link with external entities
 
   // ================ File system entities ======================
@@ -214,15 +212,12 @@ object external {
     val dbDefinition = mockDbDefinition.getOrElse(SparkUtils.getExternalCatalog().getDatabase(db))
 
     val dbEntities = hiveDbToEntities(dbDefinition, cluster)
-    val sdEntities = hiveStorageDescToEntities(
-      tableDefinition.storage, cluster, db, table
-      /* isTempTable = false  Spark doesn't support temp table */)
+    val sdEntities = hiveStorageDescToEntities(tableDefinition.storage, cluster, db, table)
     val schemaEntities = hiveSchemaToEntities(
-      tableDefinition.schema, cluster, db, table /* , isTempTable = false */)
-
+      tableDefinition.schema, cluster, db, table)
     val tblEntity = new AtlasEntity(HIVE_TABLE_TYPE_STRING)
     tblEntity.setAttribute(AtlasClient.REFERENCEABLE_ATTRIBUTE_NAME,
-      hiveTableUniqueAttribute(cluster, db, table /* , isTemporary = false */))
+      hiveTableUniqueAttribute(cluster, db, table))
     tblEntity.setAttribute(AtlasClient.NAME, table)
     tblEntity.setAttribute(AtlasClient.OWNER, tableDefinition.owner)
     tblEntity.setAttribute("createTime", new Date(tableDefinition.createTime))
@@ -235,6 +230,7 @@ object external {
     tblEntity.setAttribute("tableType", tableDefinition.tableType.name)
     tblEntity.setAttribute("columns", schemaEntities.asJava)
 
+    logDebug("")
     Seq(tblEntity) ++ dbEntities ++ sdEntities ++ schemaEntities
   }
 }

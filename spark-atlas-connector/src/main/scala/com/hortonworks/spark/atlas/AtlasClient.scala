@@ -76,6 +76,13 @@ trait AtlasClient extends Logging {
       entityType: String,
       attribute: String,
       entity: AtlasEntity): Unit
+
+  def getAtlasEntitiesWithUniqueAttribute(
+    entityType: String, attribute: String): AtlasEntity
+
+  def deleteAtlasEntitiesWithGuid(guid: String): Unit
+
+  def deleteAtlasEntitiesWithGuidBulk(guid: List[String]): Unit
 }
 
 object AtlasClient {

@@ -162,5 +162,19 @@ class FirehoseAtlasClient(conf: AtlasClientConf) extends AtlasClient {
       attribute: String): Unit = {
     deleteEntityCall(entityType) = deleteEntityCall.getOrElse(entityType, 0) + 1
   }
+
+  override def getAtlasEntitiesWithUniqueAttribute(
+      entityType: String,
+      attribute: String): AtlasEntity = {
+    ???
+  }
+
+  override def deleteAtlasEntitiesWithGuidBulk(guid: List[String]): Unit = {
+    ???
+  }
+
+  override def deleteAtlasEntitiesWithGuid(guid: String): Unit = {
+    ???
+  }
 }
 

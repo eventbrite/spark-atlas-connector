@@ -22,17 +22,14 @@ import org.json4s.jackson.JsonMethods._
 
 import scala.util.Try
 import org.apache.atlas.model.instance.AtlasEntity
-
 import org.apache.spark.sql.catalyst.TableIdentifier
-import org.apache.spark.sql.catalyst.analysis.UnresolvedRelation
 import org.apache.spark.sql.catalyst.catalog.HiveTableRelation
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.execution.{FileRelation, FileSourceScanExec}
-import org.apache.spark.sql.execution.command.{CreateDataSourceTableAsSelectCommand, CreateViewCommand, LoadDataCommand}
+import org.apache.spark.sql.execution.command.{CreateDataSourceTableAsSelectCommand, CreateDatabaseCommand, LoadDataCommand}
 import org.apache.spark.sql.execution.datasources.{InsertIntoHadoopFsRelationCommand, LogicalRelation, SaveIntoDataSourceCommand}
 import org.apache.spark.sql.hive.execution._
 import org.apache.spark.sql.sources.BaseRelation
-
 import com.hortonworks.spark.atlas.AtlasClientConf
 import com.hortonworks.spark.atlas.types.{AtlasEntityUtils, external, internal}
 import com.hortonworks.spark.atlas.utils.{Logging, SparkUtils}
@@ -62,7 +59,7 @@ object CommandsHarvester extends AtlasEntityUtils with Logging {
         case v: View => tableToEntities(v.desc)
         case l: LogicalRelation => tableToEntities(l.catalogTable.get)
         case e =>
-          logWarn(s"Missing unknown leaf node: $e")
+          logWarn(s"Missing unknown leaf node in InsertIntoHiveTableHarvester: $e")
           Seq.empty
       }
 
@@ -105,7 +102,7 @@ object CommandsHarvester extends AtlasEntityUtils with Logging {
           logInfo("Local Relation to store Spark ML pipelineModel")
           Seq.empty
         case e =>
-          logWarn(s"Missing unknown leaf node: $e")
+          logWarn(s"Missing unknown leaf node in InsertIntoHadoopFsRelationHarvester: $e")
           Seq.empty
       }
 
@@ -145,8 +142,12 @@ object CommandsHarvester extends AtlasEntityUtils with Logging {
           case r if r.getClass.getCanonicalName.endsWith(HBASE_RELATION_CLASS_NAME) =>
             getHBaseEntity(r)
         }
+        case o: OneRowRelation =>
+          logInfo("OneRowRelation is not yet supported, entities are created but not the " +
+            "SparkProcess")
+          Seq.empty
         case e =>
-          logWarn(s"Missing unknown leaf node: $e")
+          logWarn(s"Missing unknown leaf node in CreateHiveTableAsSelectHarvester: $e")
           Seq.empty
       }
 
@@ -171,6 +172,24 @@ object CommandsHarvester extends AtlasEntityUtils with Logging {
     }
   }
 
+  // scalastyle:off
+  // This is for Spark databases, not Hive. Not sure if implementation will be finished
+  /*object CreateDatabaseHarvester extends Harvester[CreateDatabaseCommand] {
+    override def harvest(
+        node: CreateDatabaseCommand,
+        qd: QueryDetail): Seq[AtlasEntity] = {
+      logInfo("Hit CreateDatabaseHarvester")
+      node.subqueries.foreach { child =>
+        println(child.toString())
+        println(child.collectLeaves.toString)
+      }
+
+      val ret: Seq[AtlasEntity] = List.empty[AtlasEntity]
+      ret
+    }
+  }*/
+  // scalastyle:on
+
   object CreateDataSourceTableAsSelectHarvester
     extends Harvester[CreateDataSourceTableAsSelectCommand] {
     override def harvest(
@@ -185,7 +204,7 @@ object CommandsHarvester extends AtlasEntityUtils with Logging {
             l.relation.asInstanceOf[FileRelation].inputFiles.map(external.pathToEntity).toSeq
           }
         case e =>
-          logWarn(s"Missing unknown leaf node: $e")
+          logWarn(s"Missing unknown leaf node in CreateDataSourceTableAsSelectHarvester: $e")
           Seq.empty
       }
       val outputEntities = tableToEntities(node.table)
@@ -245,7 +264,7 @@ object CommandsHarvester extends AtlasEntityUtils with Logging {
           f.tableIdentifier.map(prepareEntities).getOrElse(
             f.relation.location.inputFiles.map(external.pathToEntity).toSeq)
         case e =>
-          logWarn(s"Missing unknown leaf node: $e")
+          logWarn(s"Missing unknown leaf node in InsertIntoHiveDirHarvester: $e")
           Seq.empty
       }
 
@@ -261,35 +280,6 @@ object CommandsHarvester extends AtlasEntityUtils with Logging {
         val pEntity = internal.etlProcessToEntity(
           inputs, List(destEntity), logMap)
         Seq(pEntity, destEntity) ++ inputsEntities.flatten
-      }
-    }
-  }
-
-  object CreateViewHarvester extends Harvester[CreateViewCommand] {
-    override def harvest(node: CreateViewCommand, qd: QueryDetail): Seq[AtlasEntity] = {
-      // from table entities
-      val child = node.child.asInstanceOf[Project].child
-      val fromTableIdentifier = child.asInstanceOf[UnresolvedRelation].tableIdentifier
-      val inputEntities = prepareEntities(fromTableIdentifier)
-
-      // new view entities
-      val viewIdentifier = node.name
-      val outputEntities = prepareEntities(viewIdentifier)
-
-      // create process entity
-      val inputTableEntity = List(inputEntities.head)
-      val outputTableEntity = List(outputEntities.head)
-      val logMap = getPlanInfo(qd)
-
-      // ml related cached object
-      if (internal.cachedObjects.contains("model_uid")) {
-        internal.updateMLProcessToEntity(inputTableEntity, outputTableEntity, logMap)
-      } else {
-
-        // create process entity
-        val pEntity = internal.etlProcessToEntity(
-          inputTableEntity, outputTableEntity, logMap)
-        Seq(pEntity) ++ inputEntities ++ outputEntities
       }
     }
   }
@@ -315,7 +305,7 @@ object CommandsHarvester extends AtlasEntityUtils with Logging {
             case e => Seq.empty
         }
         case e =>
-          logWarn(s"Missing unknown leaf node: $e")
+          logWarn(s"Missing unknown leaf node in SaveIntoDataSourceHarvester: $e")
           Seq.empty
       }
 

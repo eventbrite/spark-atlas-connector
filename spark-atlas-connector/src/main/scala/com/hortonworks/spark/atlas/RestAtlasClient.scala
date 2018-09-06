@@ -78,7 +78,8 @@ class RestAtlasClient(atlasClientConf: AtlasClientConf) extends AtlasClient {
       entityType: String,
       attribute: String): Unit = {
     client.deleteEntityByAttribute(entityType,
-      Map(org.apache.atlas.AtlasClient.REFERENCEABLE_ATTRIBUTE_NAME -> attribute).asJava)
+        Map(org.apache.atlas.AtlasClient.REFERENCEABLE_ATTRIBUTE_NAME -> attribute).asJava)
+    logInfo(s"Deleted Entity $attribute, type $entityType")
   }
 
   override protected def doUpdateEntityWithUniqueAttr(
@@ -89,5 +90,22 @@ class RestAtlasClient(atlasClientConf: AtlasClientConf) extends AtlasClient {
       entityType,
       Map(org.apache.atlas.AtlasClient.REFERENCEABLE_ATTRIBUTE_NAME -> attribute).asJava,
       new AtlasEntityWithExtInfo(entity))
+    logInfo(s"Updated entity with qualifiedName $attribute of type $entityType")
+  }
+
+  override def getAtlasEntitiesWithUniqueAttribute(
+      entityType: String, attribute: String): AtlasEntity = {
+    val entities = client.getEntityByAttribute(entityType,
+      Map(org.apache.atlas.AtlasClient.REFERENCEABLE_ATTRIBUTE_NAME -> attribute).asJava)
+    entities.getReferredEntities.asScala.toSeq
+    entities.getEntity
+  }
+
+  override def deleteAtlasEntitiesWithGuid(guid: String): Unit = {
+    client.deleteEntityByGuid(guid)
+  }
+
+  override def deleteAtlasEntitiesWithGuidBulk(guid: List[String]): Unit = {
+    client.deleteEntitiesByGuids(guid.asJava)
   }
 }
