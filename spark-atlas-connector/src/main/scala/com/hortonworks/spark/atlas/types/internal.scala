@@ -27,7 +27,7 @@ import org.apache.spark.sql.types.StructType
 import org.apache.spark.ml.{Pipeline, PipelineModel}
 import com.hortonworks.spark.atlas.utils.{Logging, SparkUtils}
 
-object internal extends Logging {
+object internal extends AtlasEntityUtils with Logging {
 
   val cachedObjects = new mutable.HashMap[String, Object]
 
@@ -90,7 +90,7 @@ object internal extends Logging {
   }
 
   def sparkTableUniqueAttribute(db: String, table: String): String = {
-    SparkUtils.getUniqueQualifiedPrefix() + s"$db.$table"
+    SparkUtils.getUniqueQualifiedPrefix() + s"$db.$table@$clusterName"
   }
 
   def sparkTableToEntities(
@@ -126,11 +126,9 @@ object internal extends Logging {
     tableDefinition.comment.foreach(tblEntity.setAttribute("comment", _))
     tblEntity.setAttribute("unsupportedFeatures", tableDefinition.unsupportedFeatures.asJava)
 
+    logDebug(s"SparkTableToEntities, $db, ${tableDefinition.identifier.table}: "
+      + (Seq(tblEntity) ++ dbEntities ++ sdEntities ++ schemaEntities).toString)
     Seq(tblEntity) ++ dbEntities ++ sdEntities ++ schemaEntities
-  }
-
-  def sparkProcessUniqueAttribute(executionId: Long): String = {
-    SparkUtils.sparkSession.sparkContext.applicationId + "." + executionId
   }
 
   def sparkProcessToEntity(
@@ -219,23 +217,37 @@ object internal extends Logging {
     entity
   }
 
+  def sparkProcessUniqueAttribute(db: String, table: String): String = {
+    s"spark_process$db.$table@$clusterName"
+  }
+
+  // Spark Process Entity
   def etlProcessToEntity(
       inputs: List[AtlasEntity],
       outputs: List[AtlasEntity],
       logMap: Map[String, String]): AtlasEntity = {
     val entity = new AtlasEntity(metadata.PROCESS_TYPE_STRING)
 
+
+//    val atlasDbEntity = client."." + outputs.head.getAttribute("db").toString
     val appId = SparkUtils.sparkSession.sparkContext.applicationId
+    val dbName = logMap.get("db")
+    val tableName = outputs.head.getAttribute("name").toString
+    val outputName = sparkProcessUniqueAttribute(dbName.get, tableName)
+
     val appName = SparkUtils.sparkSession.sparkContext.appName match {
-      case "Spark shell" => s"Spark Job + $appId"
-      case default => default + s" $appId"
+      case "Spark shell" => s"Spark Job $appId - $outputName"
+      case default => default + s"$appId - $outputName"
     }
-    entity.setAttribute(AtlasClient.REFERENCEABLE_ATTRIBUTE_NAME, appId)
+    entity.setAttribute(AtlasClient.REFERENCEABLE_ATTRIBUTE_NAME,
+      outputName) // Qualified Name
     entity.setAttribute("name", appName)
     entity.setAttribute("currUser", SparkUtils.currUser())
     entity.setAttribute("inputs", inputs.asJava)  // Dataset and Model entity
     entity.setAttribute("outputs", outputs.asJava)  // Dataset entity
     logMap.foreach { case (k, v) => entity.setAttribute(k, v)}
+    logInfo("Created spark_process entity")
+    logDebug("ETLProcessToEntityOutputs: " + outputs.mkString(", "))
     entity
   }
 
@@ -269,4 +281,25 @@ object internal extends Logging {
         ++ new_inputs ++ outputs)
     }
   }
+
+//  def queryToColumnLinaegeEntity(
+//      inputs: Seq[AtlasEntity],
+//      output: AtlasEntity,
+//      parent: AtlasEntity,
+//      logMap: Map[String, String]): Seq[AtlasEntity] = {
+//    val entity = new AtlasEntity(metadata.COLUMN_LINEAGE_PROCESS_TYPE_STRING)
+//    val processName = output.getAttribute("ColumnName") + // Find actual name when back online
+//      parent.getAttribute(AtlasClient.REFERENCEABLE_ATTRIBUTE_NAME).toString
+//    val query = logMap("query")
+//
+//    entity.setAttribute(AtlasClient.REFERENCEABLE_ATTRIBUTE_NAME, processName)
+//    // Need query (spark_process, perhaps repalce with spark_process)
+//    // Need dependencyType (String)
+//    // Need expression (String)
+//
+//  }
+
+//  def parseQueryToOutputColumn(query: String, outputColumn: String): String = {
+//    query.find("")
+//  }
 }

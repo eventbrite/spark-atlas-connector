@@ -87,6 +87,7 @@ object external extends Logging {
   def hbaseTableToEntity(cluster: String, tableName: String, nameSpace: String)
       : Seq[AtlasEntity] = {
     val hbaseEntity = new AtlasEntity(HBASE_TABLE_STRING)
+
     hbaseEntity.setAttribute(AtlasClient.REFERENCEABLE_ATTRIBUTE_NAME,
       getTableQualifiedName(cluster, nameSpace, tableName))
     hbaseEntity.setAttribute(AtlasClient.NAME, tableName.toLowerCase)
@@ -100,6 +101,7 @@ object external extends Logging {
 
   def kafkaToEntity(cluster: String, topicName: String): Seq[AtlasEntity] = {
     val kafkaEntity = new AtlasEntity(KAFKA_TOPIC_STRING)
+
     kafkaEntity.setAttribute(AtlasClient.REFERENCEABLE_ATTRIBUTE_NAME,
       topicName.toLowerCase + '@' + cluster)
     kafkaEntity.setAttribute(AtlasClient.NAME, topicName.toLowerCase)
@@ -145,6 +147,7 @@ object external extends Logging {
       table: String,
       isTempTable: Boolean = false): Seq[AtlasEntity] = {
     val sdEntity = new AtlasEntity(HIVE_STORAGEDESC_TYPE_STRING)
+
     sdEntity.setAttribute(AtlasClient.REFERENCEABLE_ATTRIBUTE_NAME,
       hiveStorageDescUniqueAttribute(cluster, db, table, isTempTable))
     storageFormat.inputFormat.foreach(sdEntity.setAttribute("inputFormat", _))
@@ -216,6 +219,7 @@ object external extends Logging {
     val schemaEntities = hiveSchemaToEntities(
       tableDefinition.schema, cluster, db, table)
     val tblEntity = new AtlasEntity(HIVE_TABLE_TYPE_STRING)
+
     tblEntity.setAttribute(AtlasClient.REFERENCEABLE_ATTRIBUTE_NAME,
       hiveTableUniqueAttribute(cluster, db, table))
     tblEntity.setAttribute(AtlasClient.NAME, table)
@@ -230,7 +234,15 @@ object external extends Logging {
     tblEntity.setAttribute("tableType", tableDefinition.tableType.name)
     tblEntity.setAttribute("columns", schemaEntities.asJava)
 
-    logDebug("")
+
+    val tmp = Seq(tblEntity) ++ dbEntities ++ sdEntities ++ schemaEntities
+//    logDebug(s"Hive table entities from external: ${tmp.mkString(" | ")}")
     Seq(tblEntity) ++ dbEntities ++ sdEntities ++ schemaEntities
   }
+
+//  def hiveQueryToColumnLinaegeEntity(query: String): Seq[AtlasEntity] = {
+//    // Need query (hive_process, perhaps repalce with spark_process)
+//    // Need dependencyType (String)
+//    // Need expression (String
+//  }
 }

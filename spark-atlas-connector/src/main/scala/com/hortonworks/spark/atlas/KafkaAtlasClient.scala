@@ -114,6 +114,10 @@ class KafkaAtlasClient(atlasClientConf: AtlasClientConf) extends AtlasHook with 
     ???
   }
 
+  override def getAtlasEntityWithGuid(guid: String): AtlasEntity = {
+    ???
+  }
+
   override def deleteAtlasEntitiesWithGuidBulk(
     guid: List[String]): Unit = {
     ???

@@ -55,12 +55,16 @@ class SparkExecutionPlanProcessor(
             CommandsHarvester.LoadDataHarvester.harvest(c, qd)
 
           case c: CreateDataSourceTableAsSelectCommand =>
-            logDebug(s"CREATE TABLE USING xx AS SELECT query: ${qd.qe}")
+//            logDebug(s"CREATE TABLE USING xx AS SELECT query: ${qd.qe}")
             CommandsHarvester.CreateDataSourceTableAsSelectHarvester.harvest(c, qd)
 
           case c: SaveIntoDataSourceCommand =>
             logDebug(s"DATA FRAME SAVE INTO DATA SOURCE: ${qd.qe}")
             CommandsHarvester.SaveIntoDataSourceHarvester.harvest(c, qd)
+
+          case c: CreateDatabaseCommand =>
+            logDebug(s"CREATE DATABASE[IF NOT EXISTS]: ${qd.qe}")
+            CommandsHarvester.CreateDatabaseHarvester.harvest(c, qd)
 
           case _ =>
             Seq.empty

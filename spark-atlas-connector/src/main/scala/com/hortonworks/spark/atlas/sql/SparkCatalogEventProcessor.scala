@@ -53,27 +53,22 @@ class SparkCatalogEventProcessor(
 
       case DropTableEvent(db, table) =>
         val isHiveTable: Boolean = true
-        try {
           val tableDefinition: AtlasEntity = atlasClient.getAtlasEntitiesWithUniqueAttribute(
             tableType(isHiveTable), tableUniqueAttribute(db, table, isHiveTable))
           val guidBuffer: ListBuffer[String] = ListBuffer()
 
-          tableDefinition.getAttribute("columns")
-            .asInstanceOf[ArrayList[LinkedHashMap[String, String]]]
-            .asScala
-            .toList
-            .foreach { x =>
-            if (x.get("typeName") == "hive_column") {
-              guidBuffer += x.get("guid")
+          if(!tableDefinition.hasAttribute("columns")) {
+            logInfo(s"No columns found for $db.$table, continuing without dropping any columns")
+          } else {
+            val columnsMap = tableDefinition.getAttribute("columns")
+              .asInstanceOf[ArrayList[LinkedHashMap[String, String]]]
+            columnsMap.asScala.toList.foreach { x =>
+              if (x.get("typeName") == "hive_column") {
+                guidBuffer += x.get("guid")
+              }
             }
+            atlasClient.deleteAtlasEntitiesWithGuidBulk(guidBuffer.toList)
           }
-
-          atlasClient.deleteAtlasEntitiesWithGuidBulk(guidBuffer.toList)
-        } catch {
-          case e: org.apache.atlas.AtlasServiceException =>
-            logInfo(s"Columns are already deleted for $db.$table, full exception")
-            e.printStackTrace()
-        }
 
         atlasClient.deleteEntityWithUniqueAttr(
           tableType(isHiveTable), tableUniqueAttribute(db, table, isHiveTable))

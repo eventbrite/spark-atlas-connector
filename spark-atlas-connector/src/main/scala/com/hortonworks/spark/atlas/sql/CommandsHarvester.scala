@@ -53,6 +53,7 @@ object CommandsHarvester extends AtlasEntityUtils with Logging {
   object InsertIntoHiveTableHarvester extends Harvester[InsertIntoHiveTable] {
     override def harvest(node: InsertIntoHiveTable, qd: QueryDetail): Seq[AtlasEntity] = {
       // source tables entities
+      logInfo("Hit InsertIntoHiveTableHarvester")
       val tChildren = node.query.collectLeaves()
       val inputsEntities = tChildren.map {
         case r: HiveTableRelation => tableToEntities(r.tableMeta)
@@ -67,7 +68,7 @@ object CommandsHarvester extends AtlasEntityUtils with Logging {
       val outputEntities = tableToEntities(node.table)
       val inputTablesEntities = inputsEntities.flatMap(_.headOption).toList
       val outputTableEntities = List(outputEntities.head)
-      val logMap = getPlanInfo(qd)
+      val logMap = getPlanInfo(qd, node.table.database)
 
       // ml related cached object
       if (internal.cachedObjects.contains("model_uid")) {
@@ -85,6 +86,7 @@ object CommandsHarvester extends AtlasEntityUtils with Logging {
     override def harvest(node: InsertIntoHadoopFsRelationCommand, qd: QueryDetail)
         : Seq[AtlasEntity] = {
       // source tables/files entities
+      logInfo("Hit InsertIntoHadoopFsRelationHarvester")
       val tChildren = node.query.collectLeaves()
       var isFiles = false
       val inputsEntities = tChildren.map {
@@ -112,7 +114,8 @@ object CommandsHarvester extends AtlasEntityUtils with Logging {
       // new table/file entity
       val outputEntities = node.catalogTable.map(tableToEntities(_)).getOrElse(
         List(external.pathToEntity(node.outputPath.toUri.toString)))
-      val logMap = getPlanInfo(qd)
+      val db = if (node.catalogTable.nonEmpty) node.catalogTable.get.database else ""
+      val logMap = getPlanInfo(qd, db)
 
       // ml related cached object
       if (internal.cachedObjects.contains("model_uid")) {
@@ -130,8 +133,10 @@ object CommandsHarvester extends AtlasEntityUtils with Logging {
         node: CreateHiveTableAsSelectCommand,
         qd: QueryDetail): Seq[AtlasEntity] = {
       // source tables entities
+      logInfo("Hit CreateHiveTableAsSelectHarvester")
       val tChildren = node.query.collectLeaves()
       val inputsEntities = tChildren.map {
+        // Hive table relation contains all columns in the table used with their #ID
         case r: HiveTableRelation => tableToEntities(r.tableMeta)
         case v: View => tableToEntities(v.desc)
         case l: LogicalRelation => l.relation match {
@@ -146,18 +151,55 @@ object CommandsHarvester extends AtlasEntityUtils with Logging {
           logInfo("OneRowRelation is not yet supported, entities are created but not the " +
             "SparkProcess")
           Seq.empty
+        // Column Level Lineage needs to be somewhere here
         case e =>
           logWarn(s"Missing unknown leaf node in CreateHiveTableAsSelectHarvester: $e")
           Seq.empty
       }
-
       // new table entity
-      val outputEntities = tableToEntities(node.tableDesc)
+      // Node does not have the necessary data from the schema, so we'll pull it from the entity
+      // created by the SparkCatalogEventProcessor
+      val tableDesc = node.tableDesc
+      val outputEntities = Seq(client.getAtlasEntitiesWithUniqueAttribute(
+        external.HIVE_TABLE_TYPE_STRING, s"${tableDesc.qualifiedName}@$clusterName"))
+
+      // All outputs HiveTableRelations
+      node.query.collectLeaves().foreach { x =>
+        logDebug(s"Leaves: " + x.toString())
+      }
+
+      node.query.collectLeaves().foreach {
+        case h: HiveTableRelation => logDebug(s"ViewQueryColumnNames: "
+          + h.tableMeta.viewQueryColumnNames.mkString(" | "))
+      }
+
+      node.query.collectLeaves().foreach {
+        case h: HiveTableRelation => logDebug(s"Datacols: ${h.dataCols.mkString(" | ")}")
+      }
+
+      qd.qe.executedPlan.foreach{ x =>
+        logDebug("New Loop")
+        logDebug(s"OutputSet No Leaves: ${x.outputSet.mkString(" | ")}")
+        logDebug(s"InputSet No Leaves: ${x.inputSet.mkString(" | ")}")
+        logDebug(s"Line No Leaves: ${x.origin.line.getOrElse(-1)}")
+        x.expressions.foreach(y => logDebug(s"Expression No Leaves: ${y.sql}"))
+
+      }
+
+      qd.qe.optimizedPlan.foreach{
+        case a: Aggregate => logDebug(s"${a}")
+      }
+
+      node.query.collectLeaves().foreach {
+        case h: HiveTableRelation => logDebug(s"Outputcols: ${h.output.mkString(" | ")}")
+      }
+
+      logDebug(s"Simple String (Physical Plan): ${qd.qe.simpleString}")
 
       // create process entity
       val inputTablesEntities = inputsEntities.flatMap(_.headOption).toList
       val outputTableEntities = List(outputEntities.head)
-      val logMap = getPlanInfo(qd)
+      val logMap = getPlanInfo(qd, node.tableDesc.database)
 
       // ml related cached object
       if (internal.cachedObjects.contains("model_uid")) {
@@ -172,29 +214,31 @@ object CommandsHarvester extends AtlasEntityUtils with Logging {
     }
   }
 
-  // scalastyle:off
-  // This is for Spark databases, not Hive. Not sure if implementation will be finished
-  /*object CreateDatabaseHarvester extends Harvester[CreateDatabaseCommand] {
+  // This is for Spark databases, not Hive. There are no inputs for this process
+  object CreateDatabaseHarvester extends Harvester[CreateDatabaseCommand] {
     override def harvest(
         node: CreateDatabaseCommand,
         qd: QueryDetail): Seq[AtlasEntity] = {
       logInfo("Hit CreateDatabaseHarvester")
-      node.subqueries.foreach { child =>
-        println(child.toString())
-        println(child.collectLeaves.toString)
-      }
+      val db = SparkUtils.getExternalCatalog().getDatabase(node.databaseName)
+      val inputEntities: List[AtlasEntity] = List.empty[AtlasEntity]
+      val outputEntities = dbToEntities(db)
+      val outputDbEntities = List(outputEntities.head)
+      val logMap = getPlanInfo(qd, node.databaseName)
 
-      val ret: Seq[AtlasEntity] = List.empty[AtlasEntity]
-      ret
+      val processEntity = internal.etlProcessToEntity(
+        inputEntities, outputDbEntities, logMap)
+
+      Seq(processEntity) ++ inputEntities ++ outputEntities
     }
-  }*/
-  // scalastyle:on
+  }
 
   object CreateDataSourceTableAsSelectHarvester
     extends Harvester[CreateDataSourceTableAsSelectCommand] {
     override def harvest(
         node: CreateDataSourceTableAsSelectCommand,
         qd: QueryDetail): Seq[AtlasEntity] = {
+      logInfo("Hit CreateDataSourceTableAsSelectHarvester")
       val tChildren = node.query.collectLeaves()
       val inputsEntities = tChildren.map {
         case r: HiveTableRelation => tableToEntities(r.tableMeta)
@@ -210,7 +254,7 @@ object CommandsHarvester extends AtlasEntityUtils with Logging {
       val outputEntities = tableToEntities(node.table)
       val inputTablesEntities = inputsEntities.flatMap(_.headOption).toList
       val outputTableEntities = List(outputEntities.head)
-      val logMap = getPlanInfo(qd)
+      val logMap = getPlanInfo(qd, node.table.database)
 
       // ml related cached object
       if (internal.cachedObjects.contains("model_uid")) {
@@ -227,9 +271,10 @@ object CommandsHarvester extends AtlasEntityUtils with Logging {
 
   object LoadDataHarvester extends Harvester[LoadDataCommand] {
     override def harvest(node: LoadDataCommand, qd: QueryDetail): Seq[AtlasEntity] = {
+      logInfo("Hit LoadDataHarvester")
       val pathEntity = external.pathToEntity(node.path)
       val outputEntities = prepareEntities(node.table)
-      val logMap = getPlanInfo(qd)
+      val logMap = getPlanInfo(qd, node.table.database.getOrElse(""))
 
       // ml related cached object
       if (internal.cachedObjects.contains("model_uid")) {
@@ -246,6 +291,7 @@ object CommandsHarvester extends AtlasEntityUtils with Logging {
 
   object InsertIntoHiveDirHarvester extends Harvester[InsertIntoHiveDirCommand] {
     override def harvest(node: InsertIntoHiveDirCommand, qd: QueryDetail): Seq[AtlasEntity] = {
+      logInfo("Hit InsertIntoHiveDirHarvester")
       if (node.storage.locationUri.isEmpty) {
         throw new IllegalStateException("Location URI is illegally empty")
       }
@@ -286,6 +332,7 @@ object CommandsHarvester extends AtlasEntityUtils with Logging {
 
   object SaveIntoDataSourceHarvester extends Harvester[SaveIntoDataSourceCommand] {
     override def harvest(node: SaveIntoDataSourceCommand, qd: QueryDetail): Seq[AtlasEntity] = {
+      logInfo("Hit SaveIntoDataSourceHarvester")
       // source table entity
       val tChildren = node.query.collectLeaves()
       val inputsEntities = tChildren.map {
@@ -326,6 +373,7 @@ object CommandsHarvester extends AtlasEntityUtils with Logging {
       // create process entity
       val inputTablesEntities = inputsEntities.flatMap(_.headOption).toList
       val outputTableEntities = outputEntities.toList
+      // Not a hive datasource
       val logMap = getPlanInfo(qd)
 
       // ml related cached object
@@ -364,11 +412,15 @@ object CommandsHarvester extends AtlasEntityUtils with Logging {
     }
   }
 
-  private def getPlanInfo(qd: QueryDetail): Map[String, String] = {
+  private def getPlanInfo(qd: QueryDetail, db: String = ""): Map[String, String] = {
     Map("executionId" -> qd.executionId.toString,
       "remoteUser" -> SparkUtils.currSessionUser(qd.qe),
       "executionTime" -> qd.executionTime.toString,
-      "details" -> qd.qe.toString(),
-      "sparkPlanDescription" -> qd.qe.sparkPlan.toString())
+      "details" -> qd.qe.toString,
+      "sparkPlanDescription" -> qd.qe.sparkPlan.toString,
+      "query" -> qd.query.getOrElse(""),
+      "database" -> db)
   }
+
+//  def getColumOrigin
 }

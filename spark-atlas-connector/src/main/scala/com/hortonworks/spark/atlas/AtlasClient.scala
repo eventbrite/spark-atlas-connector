@@ -80,6 +80,8 @@ trait AtlasClient extends Logging {
   def getAtlasEntitiesWithUniqueAttribute(
     entityType: String, attribute: String): AtlasEntity
 
+  def getAtlasEntityWithGuid(guid: String): AtlasEntity
+
   def deleteAtlasEntitiesWithGuid(guid: String): Unit
 
   def deleteAtlasEntitiesWithGuidBulk(guid: List[String]): Unit

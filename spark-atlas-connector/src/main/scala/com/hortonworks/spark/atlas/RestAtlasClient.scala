@@ -70,7 +70,7 @@ class RestAtlasClient(atlasClientConf: AtlasClientConf) extends AtlasClient {
       logInfo(s"Entities ${response.getCreatedEntities.asScala.map(_.getGuid).mkString(", ")} " +
         s"created")
     } catch {
-      case _: Throwable => throw new IllegalStateException(s"Fail to get create entities")
+      case _: Throwable => throw new IllegalStateException(s"Failed to get create entities")
     }
   }
 
@@ -99,6 +99,10 @@ class RestAtlasClient(atlasClientConf: AtlasClientConf) extends AtlasClient {
       Map(org.apache.atlas.AtlasClient.REFERENCEABLE_ATTRIBUTE_NAME -> attribute).asJava)
     entities.getReferredEntities.asScala.toSeq
     entities.getEntity
+  }
+
+  override def getAtlasEntityWithGuid(guid: String): AtlasEntity = {
+    client.getEntityByGuid(guid).getEntity()
   }
 
   override def deleteAtlasEntitiesWithGuid(guid: String): Unit = {

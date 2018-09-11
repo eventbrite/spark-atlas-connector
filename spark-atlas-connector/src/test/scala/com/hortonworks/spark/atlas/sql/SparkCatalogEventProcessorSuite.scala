@@ -169,6 +169,10 @@ class FirehoseAtlasClient(conf: AtlasClientConf) extends AtlasClient {
     ???
   }
 
+  override def getAtlasEntityWithGuid(guid: String): AtlasEntity = {
+    ???
+  }
+
   override def deleteAtlasEntitiesWithGuidBulk(guid: List[String]): Unit = {
     ???
   }

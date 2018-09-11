@@ -36,6 +36,7 @@ object metadata {
   val PROCESS_ETL_TYPE_STRING = "spark_etl_process"
   val ML_FIT_PROCESS_TYPE_STRING = "spark_ml_fit_process"
   val ML_TRANSFORM_PROCESS_TYPE_STRING = "spark_ml_transform_process"
+  val COLUMN_LINEAGE_PROCESS_TYPE_STRING = "spark_column_lineage_process"
 
   import external._
 
@@ -133,7 +134,8 @@ object metadata {
     AtlasTypeUtil.createOptionalAttrDef("remoteUser", new AtlasStringType),
     AtlasTypeUtil.createOptionalAttrDef("executionTime", new AtlasLongType),
     AtlasTypeUtil.createOptionalAttrDef("details", new AtlasStringType),
-    AtlasTypeUtil.createOptionalAttrDef("sparkPlanDescription", new AtlasStringType))
+    AtlasTypeUtil.createOptionalAttrDef("sparkPlanDescription", new AtlasStringType),
+    AtlasTypeUtil.createOptionalAttrDef("query", new AtlasStringType))
 
   // ========== ML directory type ==========
   val ML_DIRECTORY_TYPE = AtlasTypeUtil.createClassTypeDef(
@@ -212,4 +214,19 @@ object metadata {
     AtlasTypeUtil.createOptionalAttrDef("executionTime", new AtlasLongType),
     AtlasTypeUtil.createOptionalAttrDef("details", new AtlasStringType),
     AtlasTypeUtil.createOptionalAttrDef("sparkPlanDescription", new AtlasStringType))
+
+  // Spark Column Lineage Process type
+  val COLUMN_LINEAGE_PROCESS_TYPE = AtlasTypeUtil.createClassTypeDef(
+    COLUMN_LINEAGE_PROCESS_TYPE_STRING,
+    "",
+    METADATA_VERSION,
+    ImmutableSet.of("Process", "Referenceable"),
+    AtlasTypeUtil.createUniqueRequiredAttrDef(
+      AtlasClient.REFERENCEABLE_ATTRIBUTE_NAME, new AtlasStringType),
+    AtlasTypeUtil.createRequiredAttrDef("parentProcess", PROCESS_TYPE_STRING),
+    AtlasTypeUtil.createOptionalAttrDef("inputs", HIVE_COLUMN_TYPE_STRING),
+    AtlasTypeUtil.createRequiredAttrDef("outputs", HIVE_COLUMN_TYPE_STRING),
+    AtlasTypeUtil.createOptionalAttrDef("queryAttribute", new AtlasStringType),
+    AtlasTypeUtil.createOptionalAttrDef("nestedColumn", new AtlasBooleanType)
+  )
 }
