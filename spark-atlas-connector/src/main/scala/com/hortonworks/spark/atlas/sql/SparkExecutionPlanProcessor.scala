@@ -55,7 +55,7 @@ class SparkExecutionPlanProcessor(
             CommandsHarvester.LoadDataHarvester.harvest(c, qd)
 
           case c: CreateDataSourceTableAsSelectCommand =>
-//            logDebug(s"CREATE TABLE USING xx AS SELECT query: ${qd.qe}")
+            logDebug(s"CREATE TABLE USING xx AS SELECT query: ${qd.qe}")
             CommandsHarvester.CreateDataSourceTableAsSelectHarvester.harvest(c, qd)
 
           case c: SaveIntoDataSourceCommand =>

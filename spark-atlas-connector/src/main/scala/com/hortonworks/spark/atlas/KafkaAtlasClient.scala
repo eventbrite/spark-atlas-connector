@@ -22,13 +22,14 @@ import java.util
 import scala.collection.JavaConverters._
 
 import com.sun.jersey.core.util.MultivaluedMapImpl
+import com.hortonworks.spark.atlas.utils.SparkUtils
+
 import org.apache.atlas.hook.AtlasHook
 import org.apache.atlas.model.typedef.AtlasTypesDef
-import org.apache.atlas.model.instance.AtlasEntity
+import org.apache.atlas.model.instance.{AtlasEntity, AtlasEntityHeader}
 import org.apache.atlas.notification.hook.HookNotification
 import org.apache.atlas.typesystem.Referenceable
-
-import com.hortonworks.spark.atlas.utils.SparkUtils
+import org.apache.atlas.model.instance.AtlasEntity.AtlasEntityWithExtInfo
 
 class KafkaAtlasClient(atlasClientConf: AtlasClientConf) extends AtlasHook with AtlasClient {
 
@@ -118,13 +119,19 @@ class KafkaAtlasClient(atlasClientConf: AtlasClientConf) extends AtlasHook with 
     ???
   }
 
-  override def deleteAtlasEntitiesWithGuidBulk(
-    guid: List[String]): Unit = {
+  override def deleteAtlasEntitiesWithGuidBulk(Seq: Seq[String]): Unit = {
     ???
   }
 
-  override def deleteAtlasEntitiesWithGuid(
-    guid: String): Unit = {
+  override def deleteAtlasEntitiesWithGuid(guid: String): Unit = {
+    ???
+  }
+
+  override def doSearchByDSL(qualifiedName: String, entityType: String): Seq[AtlasEntityHeader] = {
+    ???
+  }
+
+  override def putEntityByGuid(atlasEntity: AtlasEntityWithExtInfo): Unit = {
     ???
   }
 }

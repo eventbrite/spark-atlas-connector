@@ -22,6 +22,8 @@ import java.net.{URI, URISyntaxException}
 import java.util.Date
 
 import scala.collection.JavaConverters._
+import com.hortonworks.spark.atlas.utils.{Logging, SparkUtils}
+import org.apache.atlas.`type`.AtlasTypeUtil
 import org.apache.atlas.{AtlasClient, AtlasConstants}
 import org.apache.atlas.hbase.bridge.HBaseAtlasHook._
 import org.apache.atlas.model.instance.AtlasEntity
@@ -30,7 +32,6 @@ import org.apache.hadoop.fs.Path
 import org.apache.hadoop.hive.ql.session.SessionState
 import org.apache.spark.sql.catalyst.catalog.{CatalogDatabase, CatalogStorageFormat, CatalogTable}
 import org.apache.spark.sql.types.StructType
-import com.hortonworks.spark.atlas.utils.{Logging, SparkUtils}
 
 object external extends Logging {
   // External metadata types used to link with external entities
@@ -176,6 +177,7 @@ object external extends Logging {
       db: String,
       table: String,
       isTempTable: Boolean = false): List[AtlasEntity] = {
+
     schema.map { struct =>
       val entity = new AtlasEntity(HIVE_COLUMN_TYPE_STRING)
 
@@ -210,39 +212,36 @@ object external extends Logging {
       tableDefinition: CatalogTable,
       cluster: String,
       mockDbDefinition: Option[CatalogDatabase] = None): Seq[AtlasEntity] = {
-    val db = tableDefinition.identifier.database.getOrElse("default")
+    val database = tableDefinition.identifier.database.getOrElse("default")
     val table = tableDefinition.identifier.table
-    val dbDefinition = mockDbDefinition.getOrElse(SparkUtils.getExternalCatalog().getDatabase(db))
+    val databaseDefinition =
+      mockDbDefinition.getOrElse(SparkUtils.getExternalCatalog().getDatabase(database))
 
-    val dbEntities = hiveDbToEntities(dbDefinition, cluster)
-    val sdEntities = hiveStorageDescToEntities(tableDefinition.storage, cluster, db, table)
+    val databaseEntities = hiveDbToEntities(databaseDefinition, cluster)
+    val storagedescriptorEntities =
+      hiveStorageDescToEntities(tableDefinition.storage, cluster, database, table)
+    val tableEntity = new AtlasEntity(HIVE_TABLE_TYPE_STRING)
+
+    tableEntity.setAttribute(AtlasClient.REFERENCEABLE_ATTRIBUTE_NAME,
+      hiveTableUniqueAttribute(cluster, database, table))
+    tableEntity.setAttribute(AtlasClient.NAME, table)
+    tableEntity.setAttribute(AtlasClient.OWNER, tableDefinition.owner)
+    tableEntity.setAttribute("createTime", new Date(tableDefinition.createTime))
+    tableEntity.setAttribute("lastAccessTime", new Date(tableDefinition.lastAccessTime))
+    tableDefinition.comment.foreach(tableEntity.setAttribute("comment", _))
+    tableEntity.setAttribute("db", databaseEntities.head)
+    tableEntity.setAttribute("sd", storagedescriptorEntities.head)
+    tableEntity.setAttribute("parameters", tableDefinition.properties.asJava)
+    tableDefinition.viewText.foreach(tableEntity.setAttribute("viewOriginalText", _))
+    tableEntity.setAttribute("tableType", tableDefinition.tableType.name)
+
     val schemaEntities = hiveSchemaToEntities(
-      tableDefinition.schema, cluster, db, table)
-    val tblEntity = new AtlasEntity(HIVE_TABLE_TYPE_STRING)
+      tableDefinition.schema, cluster, database, table).map { entity =>
+      entity.setAttribute("table", AtlasTypeUtil.getAtlasObjectId(tableEntity))
+      entity
+    }
+    tableEntity.setAttribute("columns", schemaEntities.asJava)
 
-    tblEntity.setAttribute(AtlasClient.REFERENCEABLE_ATTRIBUTE_NAME,
-      hiveTableUniqueAttribute(cluster, db, table))
-    tblEntity.setAttribute(AtlasClient.NAME, table)
-    tblEntity.setAttribute(AtlasClient.OWNER, tableDefinition.owner)
-    tblEntity.setAttribute("createTime", new Date(tableDefinition.createTime))
-    tblEntity.setAttribute("lastAccessTime", new Date(tableDefinition.lastAccessTime))
-    tableDefinition.comment.foreach(tblEntity.setAttribute("comment", _))
-    tblEntity.setAttribute("db", dbEntities.head)
-    tblEntity.setAttribute("sd", sdEntities.head)
-    tblEntity.setAttribute("parameters", tableDefinition.properties.asJava)
-    tableDefinition.viewText.foreach(tblEntity.setAttribute("viewOriginalText", _))
-    tblEntity.setAttribute("tableType", tableDefinition.tableType.name)
-    tblEntity.setAttribute("columns", schemaEntities.asJava)
-
-
-    val tmp = Seq(tblEntity) ++ dbEntities ++ sdEntities ++ schemaEntities
-//    logDebug(s"Hive table entities from external: ${tmp.mkString(" | ")}")
-    Seq(tblEntity) ++ dbEntities ++ sdEntities ++ schemaEntities
+    Seq(tableEntity) ++ databaseEntities ++ storagedescriptorEntities ++ schemaEntities
   }
-
-//  def hiveQueryToColumnLinaegeEntity(query: String): Seq[AtlasEntity] = {
-//    // Need query (hive_process, perhaps repalce with spark_process)
-//    // Need dependencyType (String)
-//    // Need expression (String
-//  }
 }

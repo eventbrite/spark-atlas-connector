@@ -18,11 +18,11 @@
 package com.hortonworks.spark.atlas.sql
 
 import java.util.{ArrayList, LinkedHashMap}
+
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 import org.apache.atlas.model.instance.AtlasEntity
 import org.apache.spark.sql.catalyst.catalog._
-
 import com.hortonworks.spark.atlas.{AbstractEventProcessor, AtlasClient, AtlasClientConf}
 import com.hortonworks.spark.atlas.types.{AtlasEntityUtils, external}
 import com.hortonworks.spark.atlas.utils.{Logging, SparkUtils}
@@ -53,23 +53,31 @@ class SparkCatalogEventProcessor(
 
       case DropTableEvent(db, table) =>
         val isHiveTable: Boolean = true
+
+        // If soft deletes are enabled, we need to manually drop the columns
+        if (conf.get(AtlasClientConf.ATLAS_DELETEHANDLER) ==
+          "org.apache.atlas.repository.store.graph.v1.SoftDeleteHandlerV1") {
           val tableDefinition: AtlasEntity = atlasClient.getAtlasEntitiesWithUniqueAttribute(
             tableType(isHiveTable), tableUniqueAttribute(db, table, isHiveTable))
           val guidBuffer: ListBuffer[String] = ListBuffer()
 
-          if(!tableDefinition.hasAttribute("columns")) {
+
+          if (!tableDefinition.hasAttribute("columns")) {
             logInfo(s"No columns found for $db.$table, continuing without dropping any columns")
           } else {
             val columnsMap = tableDefinition.getAttribute("columns")
               .asInstanceOf[ArrayList[LinkedHashMap[String, String]]]
             columnsMap.asScala.toList.foreach { x =>
               if (x.get("typeName") == "hive_column") {
+                logDebug(s"Adding ${x.get("guid")} to guidBuffer for DropTableEvent")
                 guidBuffer += x.get("guid")
               }
             }
             atlasClient.deleteAtlasEntitiesWithGuidBulk(guidBuffer.toList)
           }
+        }
 
+        // Drop storage descriptor and table
         atlasClient.deleteEntityWithUniqueAttr(
           tableType(isHiveTable), tableUniqueAttribute(db, table, isHiveTable))
         atlasClient.deleteEntityWithUniqueAttr(
@@ -83,6 +91,7 @@ class SparkCatalogEventProcessor(
         val sdEntity = new AtlasEntity(storageFormatType(isHiveTbl))
         sdEntity.setAttribute(org.apache.atlas.AtlasClient.REFERENCEABLE_ATTRIBUTE_NAME,
           storageFormatUniqueAttribute(db, newName, isHiveTbl))
+
         atlasClient.updateEntityWithUniqueAttr(
           storageFormatType(isHiveTbl),
           storageFormatUniqueAttribute(db, name, isHiveTbl),

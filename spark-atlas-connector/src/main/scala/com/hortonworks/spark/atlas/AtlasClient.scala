@@ -18,12 +18,11 @@
 package com.hortonworks.spark.atlas
 
 import scala.util.control.NonFatal
-
 import com.sun.jersey.core.util.MultivaluedMapImpl
-import org.apache.atlas.model.instance.AtlasEntity
+import org.apache.atlas.model.instance.{AtlasEntity, AtlasEntityHeader}
 import org.apache.atlas.model.typedef.AtlasTypesDef
-
 import com.hortonworks.spark.atlas.utils.Logging
+import org.apache.atlas.model.instance.AtlasEntity.AtlasEntityWithExtInfo
 
 trait AtlasClient extends Logging {
 
@@ -67,8 +66,6 @@ trait AtlasClient extends Logging {
       doUpdateEntityWithUniqueAttr(entityType, attribute, entity)
     } catch {
       case NonFatal(e) =>
-        logWarn(s"Failed to update entity $entity with type $entityType and attribute " +
-          s"$attribute", e)
     }
   }
 
@@ -84,7 +81,11 @@ trait AtlasClient extends Logging {
 
   def deleteAtlasEntitiesWithGuid(guid: String): Unit
 
-  def deleteAtlasEntitiesWithGuidBulk(guid: List[String]): Unit
+  def deleteAtlasEntitiesWithGuidBulk(guid: Seq[String]): Unit
+
+  def doSearchByDSL(qualifiedName: String, entityType: String): Seq[AtlasEntityHeader]
+
+  def putEntityByGuid(atlasEntity: AtlasEntityWithExtInfo): Unit
 }
 
 object AtlasClient {

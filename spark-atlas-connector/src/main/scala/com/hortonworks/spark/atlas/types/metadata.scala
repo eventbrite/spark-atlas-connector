@@ -19,6 +19,7 @@ package com.hortonworks.spark.atlas.types
 
 import com.google.common.collect.{ImmutableMap, ImmutableSet}
 import org.apache.atlas.AtlasClient
+import org.apache.atlas.repository.Constants
 import org.apache.atlas.`type`.AtlasBuiltInTypes.{AtlasBooleanType, AtlasLongType, AtlasStringType}
 import org.apache.atlas.`type`.{AtlasArrayType, AtlasMapType, AtlasTypeUtil}
 import org.apache.atlas.model.typedef.AtlasStructDef.AtlasConstraintDef
@@ -45,9 +46,7 @@ object metadata {
     DB_TYPE_STRING,
     "",
     METADATA_VERSION,
-    ImmutableSet.of("DataSet"),
-    AtlasTypeUtil.createUniqueRequiredAttrDef(
-      AtlasClient.REFERENCEABLE_ATTRIBUTE_NAME, new AtlasStringType),
+    ImmutableSet.of("DataSet", "Referenceable"),
     AtlasTypeUtil.createOptionalAttrDef("description", new AtlasStringType),
     AtlasTypeUtil.createOptionalAttrDef("locationUri", FS_PATH_TYPE_STRING),
     AtlasTypeUtil.createOptionalAttrDef(
@@ -59,8 +58,6 @@ object metadata {
     "",
     METADATA_VERSION,
     ImmutableSet.of("Referenceable"),
-    AtlasTypeUtil.createUniqueRequiredAttrDef(
-      AtlasClient.REFERENCEABLE_ATTRIBUTE_NAME, new AtlasStringType),
     AtlasTypeUtil.createOptionalAttrDef("locationUri", FS_PATH_TYPE_STRING),
     AtlasTypeUtil.createOptionalAttrDef("inputFormat", new AtlasStringType),
     AtlasTypeUtil.createOptionalAttrDef("outputFormat", new AtlasStringType),
@@ -79,9 +76,7 @@ object metadata {
     COLUMN_TYPE_STRING,
     "",
     METADATA_VERSION,
-    ImmutableSet.of("DataSet"),
-    AtlasTypeUtil.createUniqueRequiredAttrDef(
-      AtlasClient.REFERENCEABLE_ATTRIBUTE_NAME, new AtlasStringType),
+    ImmutableSet.of("DataSet", "Referenceable"),
     AtlasTypeUtil.createRequiredAttrDef("type", new AtlasStringType),
     AtlasTypeUtil.createOptionalAttrDef("nullable", new AtlasBooleanType),
     AtlasTypeUtil.createOptionalAttrDef("metadata", new AtlasStringType),
@@ -96,9 +91,7 @@ object metadata {
     TABLE_TYPE_STRING,
     "",
     METADATA_VERSION,
-    ImmutableSet.of("DataSet"),
-    AtlasTypeUtil.createUniqueRequiredAttrDef(
-      AtlasClient.REFERENCEABLE_ATTRIBUTE_NAME, new AtlasStringType),
+    ImmutableSet.of("DataSet", "Referenceable"),
     AtlasTypeUtil.createOptionalAttrDef("database", DB_TYPE_STRING),
     AtlasTypeUtil.createOptionalAttrDef("tableType", new AtlasStringType),
     AtlasTypeUtil.createOptionalAttrDefWithConstraint(
@@ -126,9 +119,7 @@ object metadata {
     PROCESS_TYPE_STRING,
     "",
     METADATA_VERSION,
-    ImmutableSet.of("Process"),
-    AtlasTypeUtil.createUniqueRequiredAttrDef(
-      AtlasClient.REFERENCEABLE_ATTRIBUTE_NAME, new AtlasStringType),
+    ImmutableSet.of("Process", "Referenceable"),
     AtlasTypeUtil.createOptionalAttrDef("executionId", new AtlasLongType),
     AtlasTypeUtil.createOptionalAttrDef("currUser", new AtlasStringType),
     AtlasTypeUtil.createOptionalAttrDef("remoteUser", new AtlasStringType),
@@ -142,9 +133,7 @@ object metadata {
     ML_DIRECTORY_TYPE_STRING,
     "",
     METADATA_VERSION,
-    ImmutableSet.of("DataSet"),
-    AtlasTypeUtil.createUniqueRequiredAttrDef(
-      AtlasClient.REFERENCEABLE_ATTRIBUTE_NAME, new AtlasStringType),
+    ImmutableSet.of("DataSet", "Referenceable"),
     AtlasTypeUtil.createRequiredAttrDef("uri", new AtlasStringType),
     AtlasTypeUtil.createRequiredAttrDef("directory", new AtlasStringType))
 
@@ -153,9 +142,7 @@ object metadata {
     ML_PIPELINE_TYPE_STRING,
     "",
     METADATA_VERSION,
-    ImmutableSet.of("DataSet"),
-    AtlasTypeUtil.createUniqueRequiredAttrDef(
-      AtlasClient.REFERENCEABLE_ATTRIBUTE_NAME, new AtlasStringType),
+    ImmutableSet.of("DataSet", "Referenceable"),
     AtlasTypeUtil.createRequiredAttrDef("directory", ML_DIRECTORY_TYPE_STRING),
     AtlasTypeUtil.createOptionalAttrDef("description", new AtlasStringType),
     AtlasTypeUtil.createOptionalAttrDef("extra", new AtlasStringType))
@@ -165,9 +152,7 @@ object metadata {
     ML_MODEL_TYPE_STRING,
     "",
     METADATA_VERSION,
-    ImmutableSet.of("DataSet"),
-    AtlasTypeUtil.createUniqueRequiredAttrDef(
-      AtlasClient.REFERENCEABLE_ATTRIBUTE_NAME, new AtlasStringType),
+    ImmutableSet.of("DataSet", "Referenceable"),
     AtlasTypeUtil.createRequiredAttrDef("directory", ML_DIRECTORY_TYPE_STRING),
     AtlasTypeUtil.createOptionalAttrDef("description", new AtlasStringType),
     AtlasTypeUtil.createOptionalAttrDef("extra", new AtlasStringType))
@@ -177,9 +162,7 @@ object metadata {
     ML_FIT_PROCESS_TYPE_STRING,
     "",
     METADATA_VERSION,
-    ImmutableSet.of("Process"),
-    AtlasTypeUtil.createUniqueRequiredAttrDef(
-      AtlasClient.REFERENCEABLE_ATTRIBUTE_NAME, new AtlasStringType),
+    ImmutableSet.of("Process", "Referenceable"),
     AtlasTypeUtil.createRequiredAttrDef("pipeline", ML_PIPELINE_TYPE_STRING),
 //    AtlasTypeUtil.createOptionalAttrDef("startTime", new AtlasLongType),
 //    AtlasTypeUtil.createOptionalAttrDef("endTime", new AtlasLongType),
@@ -191,9 +174,7 @@ object metadata {
     ML_TRANSFORM_PROCESS_TYPE_STRING,
     "",
     METADATA_VERSION,
-    ImmutableSet.of("Process"),
-    AtlasTypeUtil.createUniqueRequiredAttrDef(
-      AtlasClient.REFERENCEABLE_ATTRIBUTE_NAME, new AtlasStringType),
+    ImmutableSet.of("Process", "Referenceable"),
     AtlasTypeUtil.createRequiredAttrDef("model", ML_MODEL_TYPE_STRING),
 //    AtlasTypeUtil.createOptionalAttrDef("startTime", new AtlasLongType),
 //    AtlasTypeUtil.createOptionalAttrDef("endTime", new AtlasLongType),
@@ -205,9 +186,7 @@ object metadata {
     PROCESS_ETL_TYPE_STRING,
     "",
     METADATA_VERSION,
-    ImmutableSet.of("Process"),
-    AtlasTypeUtil.createUniqueRequiredAttrDef(
-      AtlasClient.REFERENCEABLE_ATTRIBUTE_NAME, new AtlasStringType),
+    ImmutableSet.of("Process", "Referenceable"),
     AtlasTypeUtil.createOptionalAttrDef("executionId", new AtlasLongType),
     AtlasTypeUtil.createOptionalAttrDef("currUser", new AtlasStringType),
     AtlasTypeUtil.createOptionalAttrDef("remoteUser", new AtlasStringType),

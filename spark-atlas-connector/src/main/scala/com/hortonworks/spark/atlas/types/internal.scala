@@ -17,6 +17,8 @@
 
 package com.hortonworks.spark.atlas.types
 
+import com.hortonworks.spark.atlas.AtlasClientConf
+
 import scala.collection.mutable
 import scala.collection.JavaConverters._
 import org.apache.atlas.AtlasClient
@@ -28,6 +30,7 @@ import org.apache.spark.ml.{Pipeline, PipelineModel}
 import com.hortonworks.spark.atlas.utils.{Logging, SparkUtils}
 
 object internal extends AtlasEntityUtils with Logging {
+  override val conf: AtlasClientConf = new AtlasClientConf
 
   val cachedObjects = new mutable.HashMap[String, Object]
 
@@ -131,30 +134,6 @@ object internal extends AtlasEntityUtils with Logging {
     Seq(tblEntity) ++ dbEntities ++ sdEntities ++ schemaEntities
   }
 
-  def sparkProcessToEntity(
-      qe: QueryExecution,
-      executionId: Long,
-      executionTime: Long,
-      inputs: List[AtlasEntity],
-      outputs: List[AtlasEntity],
-      query: Option[String] = None): AtlasEntity = {
-    val entity = new AtlasEntity(metadata.PROCESS_TYPE_STRING)
-    val name = query.getOrElse(sparkProcessUniqueAttribute(executionId))
-
-    entity.setAttribute(
-      AtlasClient.REFERENCEABLE_ATTRIBUTE_NAME, sparkProcessUniqueAttribute(executionId))
-    entity.setAttribute(AtlasClient.NAME, name)
-    entity.setAttribute("executionId", executionId)
-    entity.setAttribute("currUser", SparkUtils.currUser())
-    entity.setAttribute("remoteUser", SparkUtils.currSessionUser(qe))
-    entity.setAttribute("inputs", inputs.asJava)
-    entity.setAttribute("outputs", outputs.asJava)
-    entity.setAttribute("executionTime", executionTime)
-    entity.setAttribute("details", qe.toString())
-    entity.setAttribute("sparkPlanDescription", qe.sparkPlan.toString())
-    entity
-  }
-
   // ================ ML related entities ==================
   def mlDirectoryToEntity(uri: String, directory: String): AtlasEntity = {
     val entity = new AtlasEntity(metadata.ML_DIRECTORY_TYPE_STRING)
@@ -227,17 +206,16 @@ object internal extends AtlasEntityUtils with Logging {
       outputs: List[AtlasEntity],
       logMap: Map[String, String]): AtlasEntity = {
     val entity = new AtlasEntity(metadata.PROCESS_TYPE_STRING)
-
-
-//    val atlasDbEntity = client."." + outputs.head.getAttribute("db").toString
     val appId = SparkUtils.sparkSession.sparkContext.applicationId
-    val dbName = logMap.get("db")
+    val dbName = logMap.get("database")
     val tableName = outputs.head.getAttribute("name").toString
     val outputName = sparkProcessUniqueAttribute(dbName.get, tableName)
 
     val appName = SparkUtils.sparkSession.sparkContext.appName match {
-      case "Spark shell" => s"Spark Job $appId - $outputName"
-      case default => default + s"$appId - $outputName"
+      case "Spark shell" => s"Spark Shell $appId - $outputName"
+      case "PySparkShell" => s"Spark Shell $appId - $outputName"
+      case sql if sql.matches("SparkSQL::.*") => s"Spark SQL $appId - $outputName"
+      case default => default + s" - $outputName"
     }
     entity.setAttribute(AtlasClient.REFERENCEABLE_ATTRIBUTE_NAME,
       outputName) // Qualified Name
@@ -281,25 +259,4 @@ object internal extends AtlasEntityUtils with Logging {
         ++ new_inputs ++ outputs)
     }
   }
-
-//  def queryToColumnLinaegeEntity(
-//      inputs: Seq[AtlasEntity],
-//      output: AtlasEntity,
-//      parent: AtlasEntity,
-//      logMap: Map[String, String]): Seq[AtlasEntity] = {
-//    val entity = new AtlasEntity(metadata.COLUMN_LINEAGE_PROCESS_TYPE_STRING)
-//    val processName = output.getAttribute("ColumnName") + // Find actual name when back online
-//      parent.getAttribute(AtlasClient.REFERENCEABLE_ATTRIBUTE_NAME).toString
-//    val query = logMap("query")
-//
-//    entity.setAttribute(AtlasClient.REFERENCEABLE_ATTRIBUTE_NAME, processName)
-//    // Need query (spark_process, perhaps repalce with spark_process)
-//    // Need dependencyType (String)
-//    // Need expression (String)
-//
-//  }
-
-//  def parseQueryToOutputColumn(query: String, outputColumn: String): String = {
-//    query.find("")
-//  }
 }

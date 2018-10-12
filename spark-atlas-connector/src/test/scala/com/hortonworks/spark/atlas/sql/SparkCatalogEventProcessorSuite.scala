@@ -24,16 +24,17 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 
 import com.sun.jersey.core.util.MultivaluedMapImpl
-import org.apache.atlas.model.instance.AtlasEntity
+import com.hortonworks.spark.atlas.{AtlasClient, AtlasClientConf, TestUtils}
+import com.hortonworks.spark.atlas.utils.SparkUtils
+
+import org.apache.atlas.model.instance.{AtlasEntity, AtlasEntityHeader}
+import org.apache.atlas.model.instance.AtlasEntity.AtlasEntityWithExtInfo
 import org.apache.atlas.model.typedef.AtlasTypesDef
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.catalog._
 import org.apache.spark.sql.types.{LongType, StructType}
 import org.scalatest.concurrent.Eventually._
 import org.scalatest.{BeforeAndAfterAll, FunSuite, Matchers}
-
-import com.hortonworks.spark.atlas.{AtlasClient, AtlasClientConf, TestUtils}
-import com.hortonworks.spark.atlas.utils.SparkUtils
 
 class SparkCatalogEventProcessorSuite extends FunSuite with Matchers with BeforeAndAfterAll {
   import TestUtils._
@@ -173,12 +174,19 @@ class FirehoseAtlasClient(conf: AtlasClientConf) extends AtlasClient {
     ???
   }
 
-  override def deleteAtlasEntitiesWithGuidBulk(guid: List[String]): Unit = {
+  override def deleteAtlasEntitiesWithGuidBulk(guid: Seq[String]): Unit = {
     ???
   }
 
   override def deleteAtlasEntitiesWithGuid(guid: String): Unit = {
     ???
   }
-}
 
+  override def doSearchByDSL(qualifiedName: String, entityType: String): Seq[AtlasEntityHeader] = {
+    ???
+  }
+
+  override def putEntityByGuid(atlasEntity: AtlasEntityWithExtInfo): Unit = {
+    ???
+  }
+}

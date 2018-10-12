@@ -17,8 +17,6 @@
 
 package com.hortonworks.spark.atlas
 
-import java.util
-
 import org.apache.atlas.ApplicationProperties
 import com.hortonworks.spark.atlas.AtlasClientConf.ConfigEntry
 
@@ -57,13 +55,16 @@ object AtlasClientConf {
   case class ConfigEntry(key: String, defaultValue: String)
 
   val ATLAS_REST_ENDPOINT = ConfigEntry("atlas.rest.address", "localhost:21000")
+  val ATLAS_DELETEHANDLER = ConfigEntry("atlas.DeleteHandlerV1.impl",
+    "org.apache.atlas.repository.store.graph.v1.SoftDeleteHandlerV1")
 
   val BLOCKING_QUEUE_CAPACITY = ConfigEntry("atlas.blockQueue.size", "10000")
-  val BLOCKING_QUEUE_PUT_TIMEOUT = ConfigEntry("atlas.blockQueue.putTimeout.ms", "3000")
 
+  val BLOCKING_QUEUE_PUT_TIMEOUT = ConfigEntry("atlas.blockQueue.putTimeout.ms", "3000")
   val CLIENT_TYPE = ConfigEntry("atlas.client.type", "rest")
   val CLIENT_USERNAME = ConfigEntry("atlas.client.username", "admin")
   val CLIENT_PASSWORD = ConfigEntry("atlas.client.password", "admin")
+
   val CLIENT_NUM_RETRIES = ConfigEntry("atlas.client.numRetries", "3")
 
   val CLUSTER_NAME = ConfigEntry("atlas.cluster.name", "primary")

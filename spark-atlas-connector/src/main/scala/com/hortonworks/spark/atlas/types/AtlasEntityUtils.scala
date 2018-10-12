@@ -158,9 +158,10 @@ trait AtlasEntityUtils {
       executionTime: Long,
       inputs: List[AtlasEntity],
       outputs: List[AtlasEntity],
-      query: Option[String] = None): AtlasEntity =
-    internal.sparkProcessToEntity(qe, executionId, executionTime, inputs, outputs, query)
+      query: Option[String] = None): AtlasEntity = ???
+//    internal.sparkProcessToEntity(qe, executionId, executionTime, inputs, outputs, query)
 
   def processUniqueAttribute(executionId: Long): String =
-    internal.sparkProcessUniqueAttribute(executionId)
+//    internal.sparkProcessUniqueAttribute(executionId)
+    ???
 }
