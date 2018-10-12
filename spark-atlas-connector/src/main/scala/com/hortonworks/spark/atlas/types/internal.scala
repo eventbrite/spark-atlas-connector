@@ -17,20 +17,20 @@
 
 package com.hortonworks.spark.atlas.types
 
+import com.hortonworks.spark.atlas.AtlasClientConf
+
 import scala.collection.mutable
 import scala.collection.JavaConverters._
-
 import org.apache.atlas.AtlasClient
 import org.apache.atlas.model.instance.AtlasEntity
-
 import org.apache.spark.sql.catalyst.catalog.{CatalogDatabase, CatalogStorageFormat, CatalogTable}
 import org.apache.spark.sql.execution.QueryExecution
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.ml.{Pipeline, PipelineModel}
-
 import com.hortonworks.spark.atlas.utils.{Logging, SparkUtils}
 
-object internal extends Logging {
+object internal extends AtlasEntityUtils with Logging {
+  override val conf: AtlasClientConf = new AtlasClientConf
 
   val cachedObjects = new mutable.HashMap[String, Object]
 
@@ -93,7 +93,7 @@ object internal extends Logging {
   }
 
   def sparkTableUniqueAttribute(db: String, table: String): String = {
-    SparkUtils.getUniqueQualifiedPrefix() + s"$db.$table"
+    SparkUtils.getUniqueQualifiedPrefix() + s"$db.$table@$clusterName"
   }
 
   def sparkTableToEntities(
@@ -129,35 +129,9 @@ object internal extends Logging {
     tableDefinition.comment.foreach(tblEntity.setAttribute("comment", _))
     tblEntity.setAttribute("unsupportedFeatures", tableDefinition.unsupportedFeatures.asJava)
 
+    logDebug(s"SparkTableToEntities, $db, ${tableDefinition.identifier.table}: "
+      + (Seq(tblEntity) ++ dbEntities ++ sdEntities ++ schemaEntities).toString)
     Seq(tblEntity) ++ dbEntities ++ sdEntities ++ schemaEntities
-  }
-
-  def sparkProcessUniqueAttribute(executionId: Long): String = {
-    SparkUtils.sparkSession.sparkContext.applicationId + "." + executionId
-  }
-
-  def sparkProcessToEntity(
-      qe: QueryExecution,
-      executionId: Long,
-      executionTime: Long,
-      inputs: List[AtlasEntity],
-      outputs: List[AtlasEntity],
-      query: Option[String] = None): AtlasEntity = {
-    val entity = new AtlasEntity(metadata.PROCESS_TYPE_STRING)
-    val name = query.getOrElse(sparkProcessUniqueAttribute(executionId))
-
-    entity.setAttribute(
-      AtlasClient.REFERENCEABLE_ATTRIBUTE_NAME, sparkProcessUniqueAttribute(executionId))
-    entity.setAttribute(AtlasClient.NAME, name)
-    entity.setAttribute("executionId", executionId)
-    entity.setAttribute("currUser", SparkUtils.currUser())
-    entity.setAttribute("remoteUser", SparkUtils.currSessionUser(qe))
-    entity.setAttribute("inputs", inputs.asJava)
-    entity.setAttribute("outputs", outputs.asJava)
-    entity.setAttribute("executionTime", executionTime)
-    entity.setAttribute("details", qe.toString())
-    entity.setAttribute("sparkPlanDescription", qe.sparkPlan.toString())
-    entity
   }
 
   // ================ ML related entities ==================
@@ -222,23 +196,36 @@ object internal extends Logging {
     entity
   }
 
+  def sparkProcessUniqueAttribute(db: String, table: String): String = {
+    s"spark_process$db.$table@$clusterName"
+  }
+
+  // Spark Process Entity
   def etlProcessToEntity(
       inputs: List[AtlasEntity],
       outputs: List[AtlasEntity],
       logMap: Map[String, String]): AtlasEntity = {
     val entity = new AtlasEntity(metadata.PROCESS_TYPE_STRING)
-
     val appId = SparkUtils.sparkSession.sparkContext.applicationId
+    val dbName = logMap.get("database")
+    val tableName = outputs.head.getAttribute("name").toString
+    val outputName = sparkProcessUniqueAttribute(dbName.get, tableName)
+
     val appName = SparkUtils.sparkSession.sparkContext.appName match {
-      case "Spark shell" => s"Spark Job + $appId"
-      case default => default + s" $appId"
+      case "Spark shell" => s"Spark Shell $appId - $outputName"
+      case "PySparkShell" => s"Spark Shell $appId - $outputName"
+      case sql if sql.matches("SparkSQL::.*") => s"Spark SQL $appId - $outputName"
+      case default => default + s" - $outputName"
     }
-    entity.setAttribute(AtlasClient.REFERENCEABLE_ATTRIBUTE_NAME, appId)
+    entity.setAttribute(AtlasClient.REFERENCEABLE_ATTRIBUTE_NAME,
+      outputName) // Qualified Name
     entity.setAttribute("name", appName)
     entity.setAttribute("currUser", SparkUtils.currUser())
     entity.setAttribute("inputs", inputs.asJava)  // Dataset and Model entity
     entity.setAttribute("outputs", outputs.asJava)  // Dataset entity
     logMap.foreach { case (k, v) => entity.setAttribute(k, v)}
+    logInfo("Created spark_process entity")
+    logDebug("ETLProcessToEntityOutputs: " + outputs.mkString(", "))
     entity
   }
 

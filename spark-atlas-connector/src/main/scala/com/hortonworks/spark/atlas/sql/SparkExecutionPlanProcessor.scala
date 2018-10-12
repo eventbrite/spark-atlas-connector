@@ -58,13 +58,13 @@ class SparkExecutionPlanProcessor(
             logDebug(s"CREATE TABLE USING xx AS SELECT query: ${qd.qe}")
             CommandsHarvester.CreateDataSourceTableAsSelectHarvester.harvest(c, qd)
 
-          case c: CreateViewCommand =>
-            logDebug(s"CREATE VIEW AS SELECT query: ${qd.qe}")
-            CommandsHarvester.CreateViewHarvester.harvest(c, qd)
-
           case c: SaveIntoDataSourceCommand =>
             logDebug(s"DATA FRAME SAVE INTO DATA SOURCE: ${qd.qe}")
             CommandsHarvester.SaveIntoDataSourceHarvester.harvest(c, qd)
+
+          case c: CreateDatabaseCommand =>
+            logDebug(s"CREATE DATABASE[IF NOT EXISTS]: ${qd.qe}")
+            CommandsHarvester.CreateDatabaseHarvester.harvest(c, qd)
 
           case _ =>
             Seq.empty
@@ -128,6 +128,10 @@ class SparkExecutionPlanProcessor(
         }
       }
 
+    if (entities.nonEmpty) {
       atlasClient.createEntities(entities)
+    } else {
+      logDebug(s"No entities to write")
     }
+  }
 }

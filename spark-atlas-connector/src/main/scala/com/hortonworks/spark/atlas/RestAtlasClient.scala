@@ -20,11 +20,14 @@ package com.hortonworks.spark.atlas
 import java.util
 
 import scala.collection.JavaConverters._
+
 import com.sun.jersey.core.util.MultivaluedMapImpl
+
 import org.apache.atlas.AtlasClientV2
 import org.apache.atlas.model.SearchFilter
-import org.apache.atlas.model.instance.AtlasEntity
+import org.apache.atlas.model.instance.{AtlasEntity, AtlasEntityHeader}
 import org.apache.atlas.model.instance.AtlasEntity.{AtlasEntitiesWithExtInfo, AtlasEntityWithExtInfo}
+import org.apache.atlas.model.instance.EntityMutations.EntityOperation
 import org.apache.atlas.model.typedef.AtlasTypesDef
 import org.apache.atlas.utils.AuthenticationUtil
 
@@ -67,10 +70,25 @@ class RestAtlasClient(atlasClientConf: AtlasClientConf) extends AtlasClient {
     entities.foreach(entitesWithExtInfo.addEntity)
     val response = client.createEntities(entitesWithExtInfo)
     try {
-      logInfo(s"Entities ${response.getCreatedEntities.asScala.map(_.getGuid).mkString(", ")} " +
-        s"created")
+      response.getCreatedEntities
+      for ((event: EntityOperation, entities: java.util.List[AtlasEntityHeader]) <-
+            response.getMutatedEntities.asScala) {
+        event match {
+          case EntityOperation.CREATE => logInfo(s"Created entities " +
+            s"${entities.asScala.map(_.getGuid).mkString(", ")}")
+          case EntityOperation.UPDATE => logInfo(s"Updated entities " +
+            s"${entities.asScala.map(_.getGuid).mkString(", ")}")
+          case EntityOperation.PARTIAL_UPDATE => logInfo(s"Partially updated entities " +
+            s"${entities.asScala.map(_.getGuid).mkString(", ")}")
+          case EntityOperation.DELETE => logWarn(s"Delete caught on a doCreateEntity call " +
+            s"${entities.asScala.map(_.getGuid).mkString(", ")}")
+          case _ => logWarn(s"Unhandled event: $event on entity: " +
+            s"$entities")
+        }
+      }
     } catch {
-      case _: Throwable => throw new IllegalStateException(s"Fail to get create entities")
+      case _: Throwable => throw new IllegalStateException(s"Failed to get create entities: " +
+        s"${response.toString}")
     }
   }
 
@@ -78,7 +96,8 @@ class RestAtlasClient(atlasClientConf: AtlasClientConf) extends AtlasClient {
       entityType: String,
       attribute: String): Unit = {
     client.deleteEntityByAttribute(entityType,
-      Map(org.apache.atlas.AtlasClient.REFERENCEABLE_ATTRIBUTE_NAME -> attribute).asJava)
+        Map(org.apache.atlas.AtlasClient.REFERENCEABLE_ATTRIBUTE_NAME -> attribute).asJava)
+    logInfo(s"Deleted entity $attribute, type $entityType")
   }
 
   override protected def doUpdateEntityWithUniqueAttr(
@@ -89,5 +108,45 @@ class RestAtlasClient(atlasClientConf: AtlasClientConf) extends AtlasClient {
       entityType,
       Map(org.apache.atlas.AtlasClient.REFERENCEABLE_ATTRIBUTE_NAME -> attribute).asJava,
       new AtlasEntityWithExtInfo(entity))
+    logInfo(s"Updated entity with qualifiedName $attribute of type $entityType")
+  }
+
+  override def getAtlasEntitiesWithUniqueAttribute(
+      entityType: String, attribute: String): AtlasEntity = {
+    val entities = client.getEntityByAttribute(entityType,
+      Map(org.apache.atlas.AtlasClient.REFERENCEABLE_ATTRIBUTE_NAME -> attribute).asJava)
+    entities.getReferredEntities.asScala.toSeq
+    entities.getEntity
+  }
+
+  override def getAtlasEntityWithGuid(guid: String): AtlasEntity = {
+    client.getEntityByGuid(guid).getEntity()
+  }
+
+  override def deleteAtlasEntitiesWithGuid(guid: String): Unit = {
+    logDebug(s"Deleting entity: $guid")
+    client.deleteEntityByGuid(guid)
+  }
+
+  override def deleteAtlasEntitiesWithGuidBulk(guid: Seq[String]): Unit = {
+    logDebug(s"Deleting entities:\n${guid.mkString("\n")}")
+    logDebug(s"java object converted to ${guid.asJava.getClass} \n"
+    + s"and looks like ${guid.asJava}")
+    try {
+      client.deleteEntitiesByGuids(guid.asJava)
+    } catch {
+      case e: Exception => logWarn(s"Bulk delete failed", e)
+    }
+  }
+
+  override def putEntityByGuid(atlasEntity: AtlasEntityWithExtInfo): Unit = {
+    val updatedEntity = client.updateEntity(atlasEntity)
+    logDebug(updatedEntity)
+  }
+
+  override def doSearchByDSL(qualifiedName: String, entityType: String): Seq[AtlasEntityHeader] = {
+    val query = s"$entityType WHERE qualifiedName=$qualifiedName"
+    val res = client.dslSearch(query).getEntities
+    res.asScala
   }
 }

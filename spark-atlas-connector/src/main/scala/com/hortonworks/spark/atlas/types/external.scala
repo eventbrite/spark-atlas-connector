@@ -22,7 +22,8 @@ import java.net.{URI, URISyntaxException}
 import java.util.Date
 
 import scala.collection.JavaConverters._
-
+import com.hortonworks.spark.atlas.utils.{Logging, SparkUtils}
+import org.apache.atlas.`type`.AtlasTypeUtil
 import org.apache.atlas.{AtlasClient, AtlasConstants}
 import org.apache.atlas.hbase.bridge.HBaseAtlasHook._
 import org.apache.atlas.model.instance.AtlasEntity
@@ -32,9 +33,7 @@ import org.apache.hadoop.hive.ql.session.SessionState
 import org.apache.spark.sql.catalyst.catalog.{CatalogDatabase, CatalogStorageFormat, CatalogTable}
 import org.apache.spark.sql.types.StructType
 
-import com.hortonworks.spark.atlas.utils.SparkUtils
-
-object external {
+object external extends Logging {
   // External metadata types used to link with external entities
 
   // ================ File system entities ======================
@@ -89,6 +88,7 @@ object external {
   def hbaseTableToEntity(cluster: String, tableName: String, nameSpace: String)
       : Seq[AtlasEntity] = {
     val hbaseEntity = new AtlasEntity(HBASE_TABLE_STRING)
+
     hbaseEntity.setAttribute(AtlasClient.REFERENCEABLE_ATTRIBUTE_NAME,
       getTableQualifiedName(cluster, nameSpace, tableName))
     hbaseEntity.setAttribute(AtlasClient.NAME, tableName.toLowerCase)
@@ -102,6 +102,7 @@ object external {
 
   def kafkaToEntity(cluster: String, topicName: String): Seq[AtlasEntity] = {
     val kafkaEntity = new AtlasEntity(KAFKA_TOPIC_STRING)
+
     kafkaEntity.setAttribute(AtlasClient.REFERENCEABLE_ATTRIBUTE_NAME,
       topicName.toLowerCase + '@' + cluster)
     kafkaEntity.setAttribute(AtlasClient.NAME, topicName.toLowerCase)
@@ -147,6 +148,7 @@ object external {
       table: String,
       isTempTable: Boolean = false): Seq[AtlasEntity] = {
     val sdEntity = new AtlasEntity(HIVE_STORAGEDESC_TYPE_STRING)
+
     sdEntity.setAttribute(AtlasClient.REFERENCEABLE_ATTRIBUTE_NAME,
       hiveStorageDescUniqueAttribute(cluster, db, table, isTempTable))
     storageFormat.inputFormat.foreach(sdEntity.setAttribute("inputFormat", _))
@@ -175,6 +177,7 @@ object external {
       db: String,
       table: String,
       isTempTable: Boolean = false): List[AtlasEntity] = {
+
     schema.map { struct =>
       val entity = new AtlasEntity(HIVE_COLUMN_TYPE_STRING)
 
@@ -209,32 +212,36 @@ object external {
       tableDefinition: CatalogTable,
       cluster: String,
       mockDbDefinition: Option[CatalogDatabase] = None): Seq[AtlasEntity] = {
-    val db = tableDefinition.identifier.database.getOrElse("default")
+    val database = tableDefinition.identifier.database.getOrElse("default")
     val table = tableDefinition.identifier.table
-    val dbDefinition = mockDbDefinition.getOrElse(SparkUtils.getExternalCatalog().getDatabase(db))
+    val databaseDefinition =
+      mockDbDefinition.getOrElse(SparkUtils.getExternalCatalog().getDatabase(database))
 
-    val dbEntities = hiveDbToEntities(dbDefinition, cluster)
-    val sdEntities = hiveStorageDescToEntities(
-      tableDefinition.storage, cluster, db, table
-      /* isTempTable = false  Spark doesn't support temp table */)
+    val databaseEntities = hiveDbToEntities(databaseDefinition, cluster)
+    val storagedescriptorEntities =
+      hiveStorageDescToEntities(tableDefinition.storage, cluster, database, table)
+    val tableEntity = new AtlasEntity(HIVE_TABLE_TYPE_STRING)
+
+    tableEntity.setAttribute(AtlasClient.REFERENCEABLE_ATTRIBUTE_NAME,
+      hiveTableUniqueAttribute(cluster, database, table))
+    tableEntity.setAttribute(AtlasClient.NAME, table)
+    tableEntity.setAttribute(AtlasClient.OWNER, tableDefinition.owner)
+    tableEntity.setAttribute("createTime", new Date(tableDefinition.createTime))
+    tableEntity.setAttribute("lastAccessTime", new Date(tableDefinition.lastAccessTime))
+    tableDefinition.comment.foreach(tableEntity.setAttribute("comment", _))
+    tableEntity.setAttribute("db", databaseEntities.head)
+    tableEntity.setAttribute("sd", storagedescriptorEntities.head)
+    tableEntity.setAttribute("parameters", tableDefinition.properties.asJava)
+    tableDefinition.viewText.foreach(tableEntity.setAttribute("viewOriginalText", _))
+    tableEntity.setAttribute("tableType", tableDefinition.tableType.name)
+
     val schemaEntities = hiveSchemaToEntities(
-      tableDefinition.schema, cluster, db, table /* , isTempTable = false */)
+      tableDefinition.schema, cluster, database, table).map { entity =>
+      entity.setAttribute("table", AtlasTypeUtil.getAtlasObjectId(tableEntity))
+      entity
+    }
+    tableEntity.setAttribute("columns", schemaEntities.asJava)
 
-    val tblEntity = new AtlasEntity(HIVE_TABLE_TYPE_STRING)
-    tblEntity.setAttribute(AtlasClient.REFERENCEABLE_ATTRIBUTE_NAME,
-      hiveTableUniqueAttribute(cluster, db, table /* , isTemporary = false */))
-    tblEntity.setAttribute(AtlasClient.NAME, table)
-    tblEntity.setAttribute(AtlasClient.OWNER, tableDefinition.owner)
-    tblEntity.setAttribute("createTime", new Date(tableDefinition.createTime))
-    tblEntity.setAttribute("lastAccessTime", new Date(tableDefinition.lastAccessTime))
-    tableDefinition.comment.foreach(tblEntity.setAttribute("comment", _))
-    tblEntity.setAttribute("db", dbEntities.head)
-    tblEntity.setAttribute("sd", sdEntities.head)
-    tblEntity.setAttribute("parameters", tableDefinition.properties.asJava)
-    tableDefinition.viewText.foreach(tblEntity.setAttribute("viewOriginalText", _))
-    tblEntity.setAttribute("tableType", tableDefinition.tableType.name)
-    tblEntity.setAttribute("columns", schemaEntities.asJava)
-
-    Seq(tblEntity) ++ dbEntities ++ sdEntities ++ schemaEntities
+    Seq(tableEntity) ++ databaseEntities ++ storagedescriptorEntities ++ schemaEntities
   }
 }

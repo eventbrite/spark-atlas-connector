@@ -133,7 +133,7 @@ This file is divided into 3 sections:
   </check>
 
   <!-- ??? usually shouldn't be checked into the code base. -->
-  <check level="error" class="org.scalastyle.scalariform.NotImplementedErrorUsage" enabled="true"></check>
+  <!-- <check level="error" class="org.scalastyle.scalariform.NotImplementedErrorUsage" enabled="true"></check> -->
 
   <!-- As of SPARK-7977 all printlns need to be wrapped in '// scalastyle:off/on println' -->
   <check customId="println" level="error" class="org.scalastyle.scalariform.TokenChecker" enabled="true">

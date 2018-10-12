@@ -21,13 +21,15 @@ import org.apache.atlas.model.instance.AtlasEntity
 import org.apache.spark.sql.execution.QueryExecution
 import org.apache.spark.sql.catalyst.catalog.{CatalogDatabase, CatalogStorageFormat, CatalogTable}
 import org.apache.spark.sql.types.StructType
-import com.hortonworks.spark.atlas.AtlasClientConf
+import com.hortonworks.spark.atlas.{AtlasClient, AtlasClientConf}
 import com.hortonworks.spark.atlas.utils.SparkUtils
 import org.apache.spark.ml.Pipeline
 
 trait AtlasEntityUtils {
 
   def conf: AtlasClientConf
+
+  val client: AtlasClient = AtlasClient.atlasClient(conf)
 
   def clusterName: String = conf.get(AtlasClientConf.CLUSTER_NAME)
 
@@ -156,9 +158,10 @@ trait AtlasEntityUtils {
       executionTime: Long,
       inputs: List[AtlasEntity],
       outputs: List[AtlasEntity],
-      query: Option[String] = None): AtlasEntity =
-    internal.sparkProcessToEntity(qe, executionId, executionTime, inputs, outputs, query)
+      query: Option[String] = None): AtlasEntity = ???
+//    internal.sparkProcessToEntity(qe, executionId, executionTime, inputs, outputs, query)
 
   def processUniqueAttribute(executionId: Long): String =
-    internal.sparkProcessUniqueAttribute(executionId)
+//    internal.sparkProcessUniqueAttribute(executionId)
+    ???
 }

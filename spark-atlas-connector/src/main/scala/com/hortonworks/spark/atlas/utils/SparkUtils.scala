@@ -30,13 +30,8 @@ import org.apache.spark.sql.hive.thriftserver.HiveThriftServer2
 object SparkUtils extends Logging {
 
   def sparkSession: SparkSession = {
-    val session = SparkSession.getActiveSession.orElse(SparkSession.getDefaultSession)
-    if (session.isEmpty) {
-      throw new IllegalStateException("Cannot find active or default SparkSession in the current " +
-        "context")
-    }
-
-    session.get
+    val session = SparkSession.builder().getOrCreate()
+    session
   }
 
   lazy val hiveConf: Configuration = {
