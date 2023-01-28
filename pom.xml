@@ -39,7 +39,7 @@
     <scalatest.version>2.2.4</scalatest.version>
     <mockito.version>1.9.5</mockito.version>
     <integration.test.enabled>false</integration.test.enabled>
-    <jersey.version>1.19</jersey.version>
+    <jersey.version>1.19.4</jersey.version>
     <jettison.version>1.3.7</jettison.version>
   </properties>
 
@@ -457,8 +457,8 @@
             </goals>
             <configuration>
               <target>
-                <delete file="${project.build.directory}/unit-tests.log" quiet="true" />
-                <delete dir="${project.build.directory}/tmp" quiet="true" />
+                <delete file="${project.build.directory}/unit-tests.log" quiet="true"/>
+                <delete dir="${project.build.directory}/tmp" quiet="true"/>
               </target>
             </configuration>
           </execution>
@@ -471,7 +471,7 @@
             </goals>
             <configuration>
               <target>
-                <mkdir dir="${project.build.directory}/tmp" />
+                <mkdir dir="${project.build.directory}/tmp"/>
               </target>
             </configuration>
           </execution>
